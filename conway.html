@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Conway's Game of Life</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Jersey+10&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: rgb(12, 0, 41);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        flex-wrap: wrap;
+        font-family: "Jersey 10", sans-serif;
+        color: white;
+      }
+      canvas {
+        margin: 0 2em;
+      }
+      #h1 {
+        color: #fff;
+        text-shadow: 0 0 10px #fff;
+        margin-bottom: 0.5em;
+        font-size: 2em;
+      }
+      p {
+        color: white;
+        margin-top: 0;
+        font-family: "Inter", sans-serif;
+      }
+      #population {
+        color: #fff;
+        font-size: 1.5em;
+        text-shadow: 0 0 10px #fff;
+      }
+
+      #text-box {
+        padding: 1em;
+        min-width: 300px;
+        max-width: 600px;
+        border-radius: 10px;
+        font-size: 1.15em;
+        background-color: rgb(12, 0, 41);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+      }
+
+      @media screen and (max-width: 660px) {
+        #text-box {
+          position: fixed;
+          top: 15px;
+          z-index: 2;
+          margin: 0 1em;
+        }
+        canvas {
+          margin-top: 12em;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="text-box">
+      <div style="text-align: center" id="population">Population:</div>
+      <div id="h1" style="text-align: center">Conway's Game of Life</div>
+      <p>
+        This is a simple implementation of Conway's Game of Life by Derek Leiro.
+      </p>
+      <p>
+        Conway's Game of Life is a cellular automaton, which is a mathematical
+        model that simulates the behavior of a system over time based on a set
+        of rules. It was devised by the British mathematician John Conway in
+        1970. The Game of Life is played on a two-dimensional grid of cells,
+        where each cell can be in one of two states: alive or dead.
+      </p>
+      <br />
+      <p>
+        The game progresses in discrete time steps, and the state of each cell
+        in the next time step is determined by the state of its eight
+        neighboring cells in the current time step, according to the following
+        rules:
+      </p>
+      <ul>
+        <li>
+          Any live cell with fewer than two live neighbors dies, as if caused
+          byunderpopulation.
+        </li>
+        <li>
+          Any live cell with two or three live neighbors liveson to the next
+          generation.
+        </li>
+        <li>
+          Any live cell with more than three liveneighbors dies, as if by
+          overpopulation.
+        </li>
+        <li>
+          Any dead cell with exactly three live neighbors becomes a live cell,
+          as if by reproduction.
+        </li>
+      </ul>
+      <p>
+        The Game of Life was created as a thought experiment to explore the idea
+        of how complex patterns and behaviors can emerge from a simple set of
+        rules
+      </p>
+    </div>
+    <canvas id="gameCanvas" width="600" height="800"></canvas>
+
+    <script>
+      // We are going to create a grid with 80 rows and 60 columns
+      // Meaning there will be a total of 80 * 60 = 4800 cells
+      // The number of cells will be determined by the canvas size and the cell size
+
+      // Here, we are getting the canvas element and its context
+      const canvas = document.getElementById("gameCanvas");
+
+      // Then we get the population element
+      const population = document.getElementById("population");
+      let oldPopulation = 0;
+      let currentPopulation = 0;
+
+      // Now ctx is the context that we will use to draw on the canvas
+      const ctx = canvas.getContext("2d");
+
+      const cellSize = 10;
+      const rows = canvas.height / cellSize;
+      const cols = canvas.width / cellSize;
+
+      // The createGrid() function generates a grid with 4800 items in a 2D array of 0s (dead cells initially)
+      // This will be a fixed grid to allow the game to run in a finite amount of time
+      let grid = createGrid();
+
+      function createGrid() {
+        return Array(rows)
+          .fill()
+          .map(() => Array(cols).fill(0));
+      }
+
+      function drawGrid() {
+        const cPop = grid.flat().reduce((a, b) => a + b);
+        population.innerHTML = "Population: " + cPop;
+        oldPopulation = cPop;
+        currentPopulation = cPop;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // For every row....
+        for (let i = 0; i < rows; i++) {
+          // For every column....
+          for (let j = 0; j < cols; j++) {
+            // If the cell is alive, fill it with a white color and a glow
+            if (grid[i][j] === 1) {
+              ctx.fillStyle = "white";
+              // Create a white glow around the cells
+              ctx.shadowColor = "white";
+              ctx.shadowBlur = 20;
+              ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+              ctx.shadowBlur = 0; // Reset the shadow blur
+            }
+          }
+        }
+      }
+
+      // This function will count the number of neighbors a cell has e.g. the 4 cells around it
+      function countNeighbors(grid, x, y) {
+        let sum = 0;
+        for (let i = -1; i < 2; i++) {
+          for (let j = -1; j < 2; j++) {
+            let row = (x + i + rows) % rows;
+            let col = (y + j + cols) % cols;
+            sum += grid[row][col]; // So if the cell is alive, we add it (or the value 1) to the sum
+          }
+        }
+        sum -= grid[x][y]; // This subtracts the current cell from the sum (It wouldn't make sense to count the current cell as a neighbor)
+        return sum;
+      }
+
+      // This function will update the grid based on the rules of the game
+      // Which is if a cell has less than 2 or more than 3 neighbors, it dies
+      // So only cells with 2 or 3 neighbors survive
+      function updateGrid() {
+        let newGrid = createGrid(); // A new grid is created to store the new state of the cells
+
+        for (let i = 0; i < rows; i++) {
+          for (let j = 0; j < cols; j++) {
+            let state = grid[i][j];
+            let neighbors = countNeighbors(grid, i, j);
+
+            // If the cell is dead and has 3 neighbors, it becomes alive
+            if (state === 0 && neighbors === 3) {
+              newGrid[i][j] = 1;
+
+              // If the cell is alive and has less than 2 or more than 3 neighbors, it dies
+            } else if (state === 1 && (neighbors < 2 || neighbors > 3)) {
+              newGrid[i][j] = 0;
+
+              // Otherwise, the cell remains the same
+            } else {
+              newGrid[i][j] = state;
+            }
+          }
+        }
+
+        // Update the grid with the new state
+        oldPopulation = grid.flat().reduce((a, b) => a + b);
+        currentPopulation = newGrid.flat().reduce((a, b) => a + b);
+        console.log(oldPopulation, currentPopulation);
+        grid = newGrid;
+      }
+      function gameLoop() {
+        drawGrid();
+
+        // Change this to a higher number to make the game run slower if you wish
+        let interval = 25; // We will update the state of game at a rate of 25ms (40 times per second)
+
+        setTimeout(() => {
+          // The alive population is the sum of all the alive cells in the grid (e.g. 1 + 0 + 0 + 1 + 1 .....)
+          population.innerHTML = "Population: " + currentPopulation;
+
+          updateGrid();
+          requestAnimationFrame(gameLoop);
+        }, interval);
+      }
+
+      // Initialize the grid with some cells alive and some dead. Alive makes up roughly < 40% of the population
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          grid[i][j] = Math.random() > 0.6 ? 1 : 0;
+        }
+      }
+
+      gameLoop();
+    </script>
+  </body>
+</html>
